@@ -11,23 +11,38 @@ from fractal import FractalNet
 from datasets import get_dataset
 
 
-config = Config()
-device = torch.device("cuda")
+# config = Config()
+# device = torch.device("cuda")
 
-# tensorboard
-writer = SummaryWriter(log_dir=os.path.join(config.path, "tb"))
-writer.add_text('config', config.as_markdown(), 0)
+# # tensorboard
+# writer = SummaryWriter(log_dir=os.path.join(config.path, "tb"))
+# writer.add_text('config', config.as_markdown(), 0)
 
-# logger
-logger = utils.get_logger(os.path.join(config.path, "{}.log".format(config.name)))
-logger.info("Run options = {}".format(sys.argv))
-config.print_params(logger.info)
+# # logger
+# logger = utils.get_logger(os.path.join(config.path, "{}.log".format(config.name)))
+# logger.info("Run options = {}".format(sys.argv))
+# config.print_params(logger.info)
 
-# copy scripts
-utils.copy_scripts("*.py", config.path)
+# # copy scripts
+# utils.copy_scripts("*.py", config.path)
 
 
 def main():
+    config = Config()
+    device = torch.device("cuda")
+
+    # tensorboard
+    writer = SummaryWriter(log_dir=os.path.join(config.path, "tb"))
+    writer.add_text('config', config.as_markdown(), 0)
+
+    # logger
+    logger = utils.get_logger(os.path.join(config.path, "{}.log".format(config.name)))
+    logger.info("Run options = {}".format(sys.argv))
+    config.print_params(logger.info)
+
+    # copy scripts
+    utils.copy_scripts("*.py", config.path)
+
     logger.info("Logger is set - training start")
 
     # set gpu device id
@@ -77,14 +92,13 @@ def main():
     best_top1 = 0.
     # training loop
     for epoch in range(config.epochs):
-        lr_scheduler.step()
-
         # training
-        train(train_loader, model, optimizer, criterion, epoch)
+        train(train_loader, model, optimizer, criterion, epoch, config, writer, logger, device)
+        lr_scheduler.step()
 
         # validation
         cur_step = (epoch+1) * len(train_loader)
-        top1 = validate(valid_loader, model, criterion, epoch, cur_step)
+        top1 = validate(valid_loader, model, criterion, epoch, cur_step, config, writer, logger, device, deepest=False)
 
         # save
         if best_top1 < top1:
@@ -99,7 +113,7 @@ def main():
     logger.info("Final best Prec@1 = {:.4%}".format(best_top1))
 
 
-def train(train_loader, model, optimizer, criterion, epoch):
+def train(train_loader, model, optimizer, criterion, epoch, config, writer, logger, device):
     top1 = utils.AverageMeter()
     top5 = utils.AverageMeter()
     losses = utils.AverageMeter()
@@ -141,7 +155,7 @@ def train(train_loader, model, optimizer, criterion, epoch):
     logger.info("Train: [{:3d}/{}] Final Prec@1 {:.4%}".format(epoch+1, config.epochs, top1.avg))
 
 
-def validate(valid_loader, model, criterion, epoch, cur_step, deepest=False):
+def validate(valid_loader, model, criterion, epoch, cur_step, config, writer, logger, device, deepest=False):
     top1 = utils.AverageMeter()
     top5 = utils.AverageMeter()
     losses = utils.AverageMeter()
